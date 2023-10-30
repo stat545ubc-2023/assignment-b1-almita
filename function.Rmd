@@ -1,0 +1,6 @@
+---
+author: Alma Garcia
+date: 30/OCT/2023
+---
+
+# Assignment B1: Making a function
