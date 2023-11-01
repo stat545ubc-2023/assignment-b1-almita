@@ -11,7 +11,7 @@ library(testthat)
 ```
 
 ## Defining the function
-I will create a function for getting the first n observations of a variable in a tibble. This wraps the dpyrl functions `slice_head` and `pull`, which I used for my MDA milestone 2. The function basically just requires the `dplyr` package. 
+I will create a function for getting the first `n` observations of a variable in a dataframe or tibble; in other words, this function will extract the first `n` observations of a column into a vector. The function replaced the `dyplr` functions `slice_head` and `pull`, which I used for my MDA milestone 2 a few times. The function basically just requires the `dplyr` package. 
 
 ```{r}
 #' Get top observations of a variable in a tibble
@@ -24,28 +24,30 @@ I will create a function for getting the first n observations of a variable in a
 #' - a positive integer, giving the position counting from the left
 #' - a negative integer, giving the position counting from the right
 #' The default returns the first column. Named the same as the arguments from `slice_head()` and `pull()`.
-#' @param n The number of rows to select. Default is `n` = 1. If `n` is greater than the number of rows in `.data` the result will be silently truncated to the `.data` row size. A negative value of `n` will be subtracted from the `.data` size. For example, `n = -2` with a `.data` of 5 rows will select 5 - 2 = 3 rows. Named the same as the arguments from `slice_head()` and `pull()`.
+#' @param n The number of rows to select. Default is `n` = 1. If `n` is greater than the number of rows in `.data` the result will be silently truncated to the `.data` row size. A negative value of `n` will drop the first `n` rows. For example, `n = -4` will return observations starting from row 5 until the last row.  Named the same as the arguments from `slice_head()` and `pull()`.
 #' @param na_rm Determines whether to keep or drop rows with `NA.` Default is `FALSE`. I used this name because it is usually called like that in other functions. 
-#' @returns A vector the same size as `.data`.
+#' @returns A vector size `n` when `n` is positive; length of `.data` - `n` when `n` is negative; and length of `.data` when `n` exceeds the number of rows in data.
 get_observations <- function(.data, var = 1, n = 1, na_rm = FALSE) {
     # stops and gives error message if .data is not the correct input
     if(!is.data.frame(.data) && !is_tibble(.data)) {
       stop('This function only works for dataframes or tibbles as input!\n',
          'You provided an object of class: ', class(.data)[1])
     }
-    
-  # stops and gives error message if n = 0
+  
+    # stops and gives error message if n = 0
     if(n == 0) {
       stop('n must be > 0 or < 0')
     }
+    
+    # changes n to length of .data if n > nrow(.data)
+    if(n > nrow(.data)) {
+      n <- nrow(.data)
+    }
   
     observations <- .data %>%
-    select({{ var }}) %>%
-    # deal with NAs
-    {if(na_rm == TRUE) drop_na(.) else .} %>%
-    slice_head(n = n) %>%
-    pull()
-    return(observations)
+      {if(na_rm == TRUE) pull(.,{{ var }}) %>% na.omit(.) else pull(.,{{ var }})}
+    
+    return(observations[0:n])
 }
 ```
 
@@ -57,20 +59,35 @@ Getting the first 10 observations from the `wt` column from `mtcars`
 mtcars %>% 
   get_observations(wt, 10)
 ```
-Working with other functions (piping), in this case to sort `wt` in descending order and then getting the first observation. 
+Working with other functions (piping), in this case to sort `wt` in descending order and then getting the first 5 observation. 
 
 ```{r}
 mtcars %>%
   arrange(desc(wt)) %>%
-  get_observations(wt)
+  get_observations(wt, 5)
 ```
 
-Removing NAs
+Removing NAs 
 
 ```{r}
-as_tibble(c(1,2,NA,3,4)) %>%
-  get_observations(n = 5, na_rm = TRUE)
+mydata <- tibble(
+  id   = 1:4,
+  sex  = c("Male", "Female", "Female", "Male"),
+  var1 = c(4, 1, 2, 3),
+  var2 = c(NA, 4, 5, NA),
+  var3 = c(2, 1, NA, NA)
+)
+
+mydata %>% get_observations(var2, n = 2, na_rm = TRUE)
 ```
+
+Using negative numbers
+
+```{r}
+mtcars %>%
+  get_observations(wt, -5)
+```
+
 
 
 ## Testing
