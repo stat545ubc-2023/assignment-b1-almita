@@ -4,3 +4,71 @@ date: 30/OCT/2023
 ---
 
 # Assignment B1: Making a function
+
+```{r}
+library(tidyverse)
+library(testthat)
+```
+
+## Defining the function
+I will create a function for getting the first n observations of a variable in a tibble. This replaces the use of `slice_head` and `pull`, which I used for my MDA milestone 2. The function requires the `dplyr` package.
+
+```{r}
+#' Get top observations of a variable in a tibble
+#' 
+#' `get_observations` returns a list of the first `n` observations of variable `var` in tibble `.data`. In contrast to using `$` and `[n]`, `get_observations` can be piped. 
+#' 
+#' @param .data A data frame, data frame extension (e.g. a tibble), or a lazy data frame (e.g. from dbplyr or dtplyr). Named the same as the arguments from `slice_head()` and `pull()`.
+#' @param var A variable specified as:
+#' - a literal variable name
+#' - a positive integer, giving the position counting from the left
+#' - a negative integer, giving the position counting from the right
+#' The default returns the last column (on the assumption that's the column you've created most recently). Named the same as the arguments from `slice_head()` and `pull()`.
+#' @param n The number of rows to select. Default is `n` = 1. If `n` is greater than the number of rows in `.data` the result will be silently truncated to the `.data` row size. A negative value of `n` will be subtracted from the `.data` size. For example, `n = -2` with a `.data` of 5 rows will select 5 - 2 = 3 rows. Named the same as the arguments from `slice_head()` and `pull()`.
+#' @returns A vector the same size as `.data`.
+get_observations <- function(.data, var = -1, n = 1, ...) {
+    if(!is.data.frame(.data) && !is_tibble(.data)) {
+      stop('This function only works for dataframes or tibbles as input!\n',
+         'You provided an object of class: ', class(.data)[1])
+    }
+    if(n == 0) {
+      stop('n must be > 0 or < 0')
+    }
+    observations <- .data %>%
+    slice_head(n = n) %>%
+    pull(var = {{ var }})
+    return(observations)
+}
+```
+
+## Examples
+
+Getting the first 10 observations from the `wt` column from `mtcars`
+```{r}
+mtcars %>% 
+  get_observations(wt, 10)
+```
+Working with other functions (piping), in this case to sort `wt` in descending order and then getting the first observation. 
+
+```{r}
+mtcars %>%
+  arrange(desc(wt)) %>%
+  get_observations(wt)
+```
+
+## Testing
+
+Testing 
+```{r}
+x <- "Observation"
+test_that("get_observations works", {
+  # test for different class of .data error
+  expect_error(get_observations(x), "This function only works for dataframes or tibbles as input!")
+  # test for inputting n = 0 (if not stopped it will return numeric(0))
+  expect_error(get_observations(mtcars, n = 0), "> 0 or < 0" )
+  # test that it returns a vector of  equal length as the number of rows of the .data
+  expect_equal(nrow(mtcars), length(get_observations(mtcars, n = 100)))
+}
+)
+```
+
