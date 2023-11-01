@@ -11,7 +11,7 @@ library(testthat)
 ```
 
 ## Defining the function
-I will create a function for getting the first n observations of a variable in a tibble. This replaces the use of `slice_head` and `pull`, which I used for my MDA milestone 2. The function requires the `dplyr` package.
+I will create a function for getting the first n observations of a variable in a tibble. This wraps the dpyrl functions `slice_head` and `pull`, which I used for my MDA milestone 2. The function basically just requires the `dplyr` package. 
 
 ```{r}
 #' Get top observations of a variable in a tibble
@@ -23,23 +23,32 @@ I will create a function for getting the first n observations of a variable in a
 #' - a literal variable name
 #' - a positive integer, giving the position counting from the left
 #' - a negative integer, giving the position counting from the right
-#' The default returns the last column (on the assumption that's the column you've created most recently). Named the same as the arguments from `slice_head()` and `pull()`.
+#' The default returns the first column. Named the same as the arguments from `slice_head()` and `pull()`.
 #' @param n The number of rows to select. Default is `n` = 1. If `n` is greater than the number of rows in `.data` the result will be silently truncated to the `.data` row size. A negative value of `n` will be subtracted from the `.data` size. For example, `n = -2` with a `.data` of 5 rows will select 5 - 2 = 3 rows. Named the same as the arguments from `slice_head()` and `pull()`.
+#' @param na_rm Determines whether to keep or drop rows with `NA.` Default is `FALSE`. I used this name because it is usually called like that in other functions. 
 #' @returns A vector the same size as `.data`.
-get_observations <- function(.data, var = -1, n = 1, ...) {
+get_observations <- function(.data, var = 1, n = 1, na_rm = FALSE) {
+    # stops and gives error message if .data is not the correct input
     if(!is.data.frame(.data) && !is_tibble(.data)) {
       stop('This function only works for dataframes or tibbles as input!\n',
          'You provided an object of class: ', class(.data)[1])
     }
+    
+  # stops and gives error message if n = 0
     if(n == 0) {
       stop('n must be > 0 or < 0')
     }
+  
     observations <- .data %>%
+    select({{ var }}) %>%
+    # deal with NAs
+    {if(na_rm == TRUE) drop_na(.) else .} %>%
     slice_head(n = n) %>%
-    pull(var = {{ var }})
+    pull()
     return(observations)
 }
 ```
+
 
 ## Examples
 
@@ -56,14 +65,21 @@ mtcars %>%
   get_observations(wt)
 ```
 
-## Testing
+Removing NAs
 
-Testing 
 ```{r}
-x <- "Observation"
+as_tibble(c(1,2,NA,3,4)) %>%
+  get_observations(n = 5, na_rm = TRUE)
+```
+
+
+## Testing
+Here I show three different tests for the function. 
+
+```{r}
 test_that("get_observations works", {
   # test for different class of .data error
-  expect_error(get_observations(x), "This function only works for dataframes or tibbles as input!")
+  expect_error(get_observations("Observation"), "This function only works for dataframes or tibbles as input!")
   # test for inputting n = 0 (if not stopped it will return numeric(0))
   expect_error(get_observations(mtcars, n = 0), "> 0 or < 0" )
   # test that it returns a vector of  equal length as the number of rows of the .data
